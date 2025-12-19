@@ -1,84 +1,20 @@
-#-------------------------------------------
-#           Import
-# ------------------------------------------
-import sqlite3
+import os
+import discord
+from dotenv import load_dotenv
 
-#-------------------------------------------
-#           Sqlite table definitions
-# ------------------------------------------
+# 1. On charge le coffre-fort (.env)
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
 
-sql_creation_joueurs = """
-CREATE TABLE joueurs (
-    discord_id INTEGER,
-    pseudo TEXT
-);
-"""
+# 2. On configure les "Intents" (Les autorisations du bot)
+intents = discord.Intents.default()
+intents.message_content = True # Important pour lire les messages !
 
-sql_creation_disponibilite = """
-CREATE TABLE disponibilite (
-    discord_id INTEGER,
-    jour INTEGER,
-    heure_debut REAL,
-    heure_fin REAL
-);"""
+client = discord.Client(intents=intents)
 
-#-------------------------------------------
-#       SQL utilisation
-#-------------------------------------------
-# --- Création de la BDD ---
+@client.event
+async def on_ready():
+    print(f'Connecté en tant que {client.user} !')
 
-conn = sqlite3.connect("database.db")
-cursor = conn.cursor()
-
-#cursor.execute("INSERT INTO joueurs VALUES (123456789, 'PlayerOne');") # <-- On active !
-#conn.commit()  # <-- On active la sauvegarde !
-
-cursor.execute("SELECT * FROM joueurs;")
-resultat = cursor.fetchall()
-print("Voici les joueurs trouvés :")
-print(resultat)
-
-conn.close()
-print("Connexion fermée.")
-#-------------------------------------------
-#           Import
-# ------------------------------------------
-import sqlite3
-
-#-------------------------------------------
-#           Sqlite table definitions
-# ------------------------------------------
-
-sql_creation_joueurs = """
-CREATE TABLE joueurs (
-    discord_id INTEGER,
-    pseudo TEXT
-);
-"""
-
-sql_creation_disponibilite = """
-CREATE TABLE disponibilite (
-    discord_id INTEGER,
-    jour INTEGER,
-    heure_debut REAL,
-    heure_fin REAL
-);"""
-
-#-------------------------------------------
-#       SQL utilisation
-#-------------------------------------------
-# --- Création de la BDD ---
-
-conn = sqlite3.connect("database.db")
-cursor = conn.cursor()
-
-#cursor.execute("INSERT INTO joueurs VALUES (123456789, 'PlayerOne');") # <-- On active !
-#conn.commit()  # <-- On active la sauvegarde !
-
-cursor.execute("SELECT * FROM joueurs;")
-resultat = cursor.fetchall()
-print("Voici les joueurs trouvés :")
-print(resultat)
-
-conn.close()
-print("Connexion fermée.")
+# 3. Lancement
+client.run(TOKEN)
