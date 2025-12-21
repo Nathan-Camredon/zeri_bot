@@ -1,20 +1,40 @@
+#------------------------------------------------------
+#           Import
+#------------------------------------------------------
 import os
+import sqlite3
 import discord
+from discord import app_commands
+from discord.ext import commands
 from dotenv import load_dotenv
+#------------------------------------------------------
+#           VARYABLES
+#------------------------------------------------------
 
-# 1. On charge le coffre-fort (.env)
+conversion_jours = {
+    "lundi": 0,
+    "mardi": 1,
+    "mercredi": 2,
+    "jeudi": 3,
+    "vendredi": 4,
+    "samedi": 5,
+    "dimanche": 6
+}
+jour_int =  conversion_jours[jour]
+
+
+#------------------------------------------------------
+#           BOT
+#------------------------------------------------------
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-
-# 2. On configure les "Intents" (Les autorisations du bot)
 intents = discord.Intents.default()
-intents.message_content = True # Important pour lire les messages !
-
+intents.message_content = True 
 client = discord.Client(intents=intents)
-
 @client.event
 async def on_ready():
     print(f'Connecté en tant que {client.user} !')
-
-# 3. Lancement
+#------------------------------------------------------
+#           TOKEN
+#------------------------------------------------------
 client.run(TOKEN)
