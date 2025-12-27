@@ -20,9 +20,30 @@ conversion_jours = {
     "samedi": 5,
     "dimanche": 6
 }
-jour_int =  conversion_jours[jour]
+#jour_int =  conversion_jours[jour]
 
+#------------------------------------------------------
+#           TABLE SQL
+#------------------------------------------------------
+conn = sqlite3.connect('database.db')
+cursor = conn.cursor()
 
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS joueurs (
+        discord_id INTEGER PRIMARY KEY,
+        pseudo TEXT
+    )
+""")
+
+cursor.execute("""
+    CREATE TABLE IF NOT EXISTS dispo (
+        discord_id INTEGER,
+        jour INTEGER,
+        heure_debut INTEGER,
+        heure_fin INTEGER
+    )
+""")
+conn.commit()
 #------------------------------------------------------
 #           BOT
 #------------------------------------------------------
