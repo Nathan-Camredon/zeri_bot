@@ -33,7 +33,9 @@ cursor = conn.cursor()
 cursor.execute("""
     CREATE TABLE IF NOT EXISTS joueurs (
         discord_id INTEGER PRIMARY KEY,
-        pseudo TEXT
+        pseudo TEXT,
+        jeu TEXT,
+        groupe TEXT
     )
 """)
 cursor.execute("""
@@ -57,10 +59,11 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
-    mon_serveur = discord.Object(id=1439742236794290178)
+    GUILD_ID = os.getenv('GUILD_ID')
+    mon_serveur = discord.Object(id=int(GUILD_ID))
     bot.tree.copy_global_to(guild=mon_serveur)
     try:
-        synced = await bot.tree.sync()
+        synced = await bot.tree.sync(guild=mon_serveur)
         print(f"Synchronisé {len(synced)} commande(s).")
     except Exception as e:
         print(f"Erreur de synchro : {e}")
@@ -80,8 +83,8 @@ async def add(interaction: discord.Interaction,
 
 
 @bot.tree.command(name="liste", description="Montre tout les joeurs inscrit")
-async def liste(interaction):
-    affichage_team(conn)
+async def liste(interaction: discord.Interaction):
+    await affichage_team(interaction, conn)
 #------------------------------------------------------
 #           LANCEMENT
 #------------------------------------------------------
