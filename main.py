@@ -8,7 +8,7 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 from typing import Literal
-from modules.add import add_player
+from modules.player_management import add_player, remove_player
 from modules.affichages import display_team
 #------------------------------------------------------
 #           VARIABLES
@@ -104,6 +104,19 @@ async def add(interaction: discord.Interaction,
     """
     await interaction.response.send_message("Players added!")
     await add_player(interaction, member, game, group, conn)
+
+
+@bot.tree.command(name="remove", description="Remove a player from the database")
+async def remove(interaction: discord.Interaction, member: discord.Member):
+    """
+    Slash command to remove a player from the database.
+    
+    Args:
+        interaction: The interaction object.
+        member: The Discord member to remove.
+    """
+    await interaction.response.send_message("Removing player...")
+    await remove_player(interaction, member, conn)
 
 
 @bot.tree.command(name="list", description="Show all registered players")
