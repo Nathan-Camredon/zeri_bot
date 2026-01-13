@@ -9,21 +9,21 @@ from discord.ext import commands
 from dotenv import load_dotenv
 from typing import Literal
 from modules.add import add_player
-from modules.affichages import affichage_team
+from modules.affichages import display_team
 #------------------------------------------------------
-#           VARYABLES
+#           VARIABLES
 #------------------------------------------------------
 
-conversion_jours = {
-    "lundi": 0,
-    "mardi": 1,
-    "mercredi": 2,
-    "jeudi": 3,
-    "vendredi": 4,
-    "samedi": 5,
-    "dimanche": 6
+day_conversion = {
+    "monday": 0,
+    "tuesday": 1,
+    "wednesday": 2,
+    "thursday": 3,
+    "friday": 4,
+    "saturday": 5,
+    "sunday": 6
 }
-#jour_int =  conversion_jours[jour]
+#day_int =  day_conversion[day]
 
 #------------------------------------------------------
 #           TABLE SQL
@@ -59,46 +59,73 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 @bot.event
 async def on_ready():
+    """
+    Event triggered when the bot is ready. 
+    Syncs the slash commands with the configured Guild.
+    """
     GUILD_ID = os.getenv('GUILD_ID')
-    mon_serveur = discord.Object(id=int(GUILD_ID))
-    bot.tree.copy_global_to(guild=mon_serveur)
+    my_guild = discord.Object(id=int(GUILD_ID))
+    bot.tree.copy_global_to(guild=my_guild)
     try:
-        synced = await bot.tree.sync(guild=mon_serveur)
-        print(f"Synchronisé {len(synced)} commande(s).")
+        synced = await bot.tree.sync(guild=my_guild)
+        print(f"Synced {len(synced)} command(s).")
     except Exception as e:
-        print(f"Erreur de synchro : {e}")
+        print(f"Sync error: {e}")
         
-    print(f'Connecté en tant que {bot.user} !')
+    print(f'Connected as {bot.user} !')
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: app_commands.AppCommandError):
+    """
+    Global error handler for all app commands (slash commands).
+    """
+    if interaction.response.is_done():
+        await interaction.followup.send(f"An error occurred: {error}", ephemeral=True)
+    else:
+        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+    print(f"App command error: {error}")
 
 #------------------------------------------------------
-#           Commandes Slash 
+#           Slash Commands 
 #------------------------------------------------------
-@bot.tree.command(name="add", description="Ajouter un joueur au planning")
+@bot.tree.command(name="add", description="Add a player to the schedule")
 async def add(interaction: discord.Interaction,
-               membre: discord.Member, 
-               jeu: Literal['League of Legend'], 
-               groupe: str):
-    await interaction.response.send_message("Joueurs add!")
-    add_player(interaction, membre, jeu, groupe, conn)
+               member: discord.Member, 
+               game: Literal['League of Legend'], 
+               group: str):
+    """
+    Slash command to add a player to the database.
+    
+    Args:
+        interaction: The interaction object.
+        member: The Discord member to add.
+        game: The game to register for.
+        group: The group name.
+    """
+    await interaction.response.send_message("Players added!")
+    await add_player(interaction, member, game, group, conn)
 
 
-@bot.tree.command(name="liste", description="Montre tout les joeurs inscrit")
-async def liste(interaction: discord.Interaction):
-    await affichage_team(interaction, conn)
+@bot.tree.command(name="list", description="Show all registered players")
+async def list_players(interaction: discord.Interaction):
+    """
+    Slash command to list all registered players and teams.
+    """
+    await display_team(interaction, conn)
 #------------------------------------------------------
-#           LANCEMENT
+#           LAUNCH
 #------------------------------------------------------
 if TOKEN:
     try:
-        # lance le bot
+        # start the bot
         bot.run(TOKEN)
     except KeyboardInterrupt:
-        print("Arrêt du bot par l'utilisateur...")
+        print("Bot stopped by user...")
     finally:
-        # dernière sauvegarde de sécurité
+        # final safety save
         if conn:
             conn.commit()
             conn.close()
-            print("Base de données sauvegardéet. 👋")
+            print("Database saved. 👋")
 else:
-    print("ERREUR : Pas de Token trouvé !")
+    print("ERROR : No Token found !")
