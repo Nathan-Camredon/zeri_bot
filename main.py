@@ -20,21 +20,23 @@ conversion_jours = {
     "samedi": 5,
     "dimanche": 6
 }
-jour_int =  conversion_jours[jour]
-
 
 #------------------------------------------------------
 #           BOT
 #------------------------------------------------------
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+
 intents = discord.Intents.default()
-intents.message_content = True 
-client = discord.Client(intents=intents)
-@client.event
+intents.message_content = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
 async def on_ready():
-    print(f'Connecté en tant que {client.user} !')
+    print(f'Connecté en tant que {bot.user} !')
+
 #------------------------------------------------------
 #           TOKEN
 #------------------------------------------------------
-client.run(TOKEN)
+bot.run(TOKEN)
