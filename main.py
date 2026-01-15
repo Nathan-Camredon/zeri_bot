@@ -8,20 +8,20 @@ from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
 from typing import Literal
-from modules.player_management import add_player, remove_player
+from modules.player_management import add_player, remove_player, add_availability
 from modules.affichages import display_team
 #------------------------------------------------------
 #           VARIABLES
 #------------------------------------------------------
 
 day_conversion = {
-    "monday": 0,
-    "tuesday": 1,
-    "wednesday": 2,
-    "thursday": 3,
-    "friday": 4,
-    "saturday": 5,
-    "sunday": 6
+    "Monday": 0,
+    "Tuesday": 1,
+    "Wednesday": 2,
+    "Thursday": 3,
+    "Friday": 4,
+    "Saturday": 5,
+    "Sunday": 6
 }
 #day_int =  day_conversion[day]
 
@@ -31,19 +31,19 @@ day_conversion = {
 conn = sqlite3.connect('database.db')
 cursor = conn.cursor()
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS joueurs (
+    CREATE TABLE IF NOT EXISTS players (
         discord_id INTEGER PRIMARY KEY,
-        pseudo TEXT,
-        jeu TEXT,
-        groupe TEXT
+        username TEXT,
+        game TEXT,
+        team TEXT
     )
 """)
 cursor.execute("""
-    CREATE TABLE IF NOT EXISTS dispo (
+    CREATE TABLE IF NOT EXISTS availability (
         discord_id INTEGER,
-        jour INTEGER,
-        heure_debut INTEGER,
-        heure_fin INTEGER
+        day INTEGER,
+        start_time INTEGER,
+        end_time INTEGER
     )
 """)
 conn.commit()
@@ -91,8 +91,8 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 @bot.tree.command(name="add", description="Add a player to the schedule")
 async def add(interaction: discord.Interaction,
                member: discord.Member, 
-               game: Literal['League of Legend'], 
-               group: str):
+               game: Literal['League of Legends'], 
+               team: str):
     """
     Slash command to add a player to the database.
     
@@ -100,10 +100,10 @@ async def add(interaction: discord.Interaction,
         interaction: The interaction object.
         member: The Discord member to add.
         game: The game to register for.
-        group: The group name.
+        team: The team name.
     """
     await interaction.response.send_message("Players added!")
-    await add_player(interaction, member, game, group, conn)
+    await add_player(interaction, member, game, team, conn)
 
 
 @bot.tree.command(name="remove", description="Remove a player from the database")
@@ -117,6 +117,40 @@ async def remove(interaction: discord.Interaction, member: discord.Member):
     """
     await interaction.response.send_message("Removing player...")
     await remove_player(interaction, member, conn)
+
+
+#------------------------------------------------------
+#           Availability Commands
+#------------------------------------------------------
+availability_group = app_commands.Group(name="availability", description="Manage availabilities")
+
+@availability_group.command(name="add", description="Add an availability slot")
+async def availability_add(interaction: discord.Interaction, 
+                           day: Literal['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 
+                           start_time: int, 
+                           end_time: int):
+    """
+    Add availability for a specific day.
+    
+    Args:
+        interaction: The interaction object.
+        day: The day of the week.
+        start_time: Start hour (0-23).
+        end_time: End hour (0-23).
+    """
+    day_int = day_conversion[day]
+    # Simple validation
+    if not (0 <= start_time <= 23) or not (0 <= end_time <= 23):
+         await interaction.response.send_message("Hours must be between 0 and 23.", ephemeral=True)
+         return
+    if start_time >= end_time:
+         await interaction.response.send_message("Start time must be before end time.", ephemeral=True)
+         return
+
+    await interaction.response.send_message("Processing availability...")
+    await add_availability(interaction, interaction.user, day_int, start_time, end_time, conn)
+
+bot.tree.add_command(availability_group)
 
 
 @bot.tree.command(name="list", description="Show all registered players")

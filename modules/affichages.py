@@ -12,25 +12,25 @@ async def display_team(interaction, conn):
     """
     cursor = conn.cursor()
     try:
-        # Keeping DB columns in French as per plan: pseudo, jeu, groupe
-        cursor.execute("Select pseudo, jeu, groupe FROM joueurs ORDER BY jeu, groupe")
+        # Using English columns: username, game, team
+        cursor.execute("SELECT username, game, team FROM players ORDER BY game, team")
         data = cursor.fetchall()
         schedule = {}
         
         for row in data: 
-            pseudo, game, group = row
+            username, game, team = row
             if game not in schedule:
                 schedule[game] = {}
-            if group not in schedule[game]:
-                schedule[game][group] = []
-            schedule[game][group].append(pseudo)
+            if team not in schedule[game]:
+                schedule[game][team] = []
+            schedule[game][team].append(username)
             
         embed = discord.Embed(title="Our Teams", color=discord.Color.blue())
         for game in schedule:
             game_description = ""
-            for group in schedule[game]:
-                players = "\n".join(schedule[game][group])
-                game_description += f"**{group}**\n{players}\n\n"
+            for team in schedule[game]:
+                players = "\n".join(schedule[game][team])
+                game_description += f"**{team}**\n{players}\n\n"
             embed.add_field(name=game, value=game_description, inline=False)
                 
         await interaction.response.send_message(embed=embed)
