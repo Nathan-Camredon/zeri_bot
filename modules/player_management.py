@@ -60,8 +60,17 @@ async def remove_player(interaction, member, conn):
                 await interaction.followup.send(f"{member.name} was not found in the database.", ephemeral=True)
             return
 
+        # Also remove from dispo table
+        query_dispo = "DELETE FROM dispo WHERE discord_id = ?"
+        cursor.execute(query_dispo, (member.id,))
+
         conn.commit()
         print(f"Success: {member.name} removed from DB.")
+        
+        if not interaction.response.is_done():
+            await interaction.response.send_message(f"{member.name} has been successfully removed.", ephemeral=True)
+        else:
+            await interaction.followup.send(f"{member.name} has been successfully removed.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_player: {e}")
         try:
