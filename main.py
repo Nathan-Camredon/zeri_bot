@@ -65,12 +65,25 @@ async def on_ready():
     """
     GUILD_ID = os.getenv('GUILD_ID')
     my_guild = discord.Object(id=int(GUILD_ID))
+    
+    # 1. Copy global commands to the specific guild
     bot.tree.copy_global_to(guild=my_guild)
+    
+    # 2. Sync guild commands (updates the guild instantly)
     try:
         synced = await bot.tree.sync(guild=my_guild)
-        print(f"Synced {len(synced)} command(s).")
+        print(f"Synced {len(synced)} command(s) to guild {GUILD_ID}.")
     except Exception as e:
-        print(f"Sync error: {e}")
+        print(f"Guild Sync error: {e}")
+
+    # 3. Clear and sync global commands to remove "ghost" duplicates
+    # (Only do this if you want to be strictly guild-only due to dev)
+    bot.tree.clear_commands(guild=None)
+    try:
+        await bot.tree.sync(guild=None)
+        print("Cleared global commands.")
+    except Exception as e:
+        print(f"Global Sync error: {e}")
         
     print(f'Connected as {bot.user} !')
 
@@ -88,7 +101,7 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
 #------------------------------------------------------
 #           Slash Commands 
 #------------------------------------------------------
-@bot.tree.command(name="add", description="Add a player to the schedule")
+@bot.tree.command(name="add", description="Ajouter un joueur au planning")
 async def add(interaction: discord.Interaction,
                member: discord.Member, 
                game: Literal['League of Legends'], 
@@ -102,11 +115,11 @@ async def add(interaction: discord.Interaction,
         game: The game to register for.
         team: The team name.
     """
-    await interaction.response.send_message("Players added!")
+    await interaction.response.send_message("Joueur ajouté !")
     await add_player(interaction, member, game, team, conn)
 
 
-@bot.tree.command(name="remove", description="Remove a player from the database")
+@bot.tree.command(name="remove", description="Retirer un joueur de la base de données")
 async def remove(interaction: discord.Interaction, member: discord.Member):
     """
     Slash command to remove a player from the database.
@@ -115,22 +128,22 @@ async def remove(interaction: discord.Interaction, member: discord.Member):
         interaction: The interaction object.
         member: The Discord member to remove.
     """
-    await interaction.response.send_message("Removing player...")
+    await interaction.response.send_message("Suppression du joueur...")
     await remove_player(interaction, member, conn)
 
 
 #------------------------------------------------------
 #           Availability Commands
 #------------------------------------------------------
-availability_group = app_commands.Group(name="availability", description="Manage availabilities")
+availability_group = app_commands.Group(name="availability", description="Gérer les disponibilités")
 
-@availability_group.command(name="add", description="Add an availability slot")
+@availability_group.command(name="add", description="Ajouter un créneau de disponibilité")
 async def availability_add(interaction: discord.Interaction, 
                            day: Literal['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], 
                            start_time: int, 
                            end_time: int):
     """
-    Add availability for a specific day.
+    Slash command to add availability for a specific day.
     
     Args:
         interaction: The interaction object.
@@ -139,21 +152,22 @@ async def availability_add(interaction: discord.Interaction,
         end_time: End hour (0-23).
     """
     day_int = day_conversion[day]
-    # Simple validation
+    # Simple validation: Check if hours are within valid range
     if not (0 <= start_time <= 23) or not (0 <= end_time <= 23):
-         await interaction.response.send_message("Hours must be between 0 and 23.", ephemeral=True)
+         await interaction.response.send_message("Les heures doivent être comprises entre 0 et 23.", ephemeral=True)
          return
+    # Simple validation: Check if start time is before end time
     if start_time >= end_time:
-         await interaction.response.send_message("Start time must be before end time.", ephemeral=True)
+         await interaction.response.send_message("L'heure de début doit être avant l'heure de fin.", ephemeral=True)
          return
 
-    await interaction.response.send_message("Processing availability...")
+    await interaction.response.send_message("Traitement de la disponibilité...")
     await add_availability(interaction, interaction.user, day_int, start_time, end_time, conn)
 
 bot.tree.add_command(availability_group)
 
 
-@bot.tree.command(name="list", description="Show all registered players")
+@bot.tree.command(name="list", description="Afficher tous les joueurs enregistrés")
 async def list_players(interaction: discord.Interaction):
     """
     Slash command to list all registered players and teams.
@@ -164,12 +178,12 @@ async def list_players(interaction: discord.Interaction):
 #------------------------------------------------------
 if TOKEN:
     try:
-        # start the bot
+        # Start the bot using the token from .env
         bot.run(TOKEN)
     except KeyboardInterrupt:
         print("Bot stopped by user...")
     finally:
-        # final safety save
+        # Final safety save on exit
         if conn:
             conn.commit()
             conn.close()

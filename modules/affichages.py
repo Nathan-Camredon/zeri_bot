@@ -8,15 +8,20 @@ import discord
 #------------------------------------------------------
 async def display_team(interaction, conn):
     """
-    Fetches and displays the list of players grouped by game and team/group.
+    Fetches and displays the list of players grouped by game and team.
+    
+    Args:
+        interaction: The Discord interaction object.
+        conn: The database connection.
     """
     cursor = conn.cursor()
     try:
-        # Using English columns: username, game, team
+        # Select all players ordered by game and team for grouping
         cursor.execute("SELECT username, game, team FROM players ORDER BY game, team")
         data = cursor.fetchall()
         schedule = {}
         
+        # Organize data into a nested dictionary: schedule[game][team] = [list of usernames]
         for row in data: 
             username, game, team = row
             if game not in schedule:
@@ -25,10 +30,11 @@ async def display_team(interaction, conn):
                 schedule[game][team] = []
             schedule[game][team].append(username)
             
-        embed = discord.Embed(title="Our Teams", color=discord.Color.blue())
+        embed = discord.Embed(title="Nos Équipes", color=discord.Color.blue())
         for game in schedule:
             game_description = ""
             for team in schedule[game]:
+                # Format player list with newlines
                 players = "\n".join(schedule[game][team])
                 game_description += f"**{team}**\n{players}\n\n"
             embed.add_field(name=game, value=game_description, inline=False)
@@ -37,6 +43,6 @@ async def display_team(interaction, conn):
     except Exception as e:
         print(f"Error in display_team: {e}")
         if interaction.response.is_done():
-             await interaction.followup.send("Failed to display team. Please try again.", ephemeral=True)
+             await interaction.followup.send("Impossible d'afficher les équipes. Veuillez réessayer.", ephemeral=True)
         else:
-             await interaction.response.send_message("Failed to display team. Please try again.", ephemeral=True)
+             await interaction.response.send_message("Impossible d'afficher les équipes. Veuillez réessayer.", ephemeral=True)

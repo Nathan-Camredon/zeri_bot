@@ -33,9 +33,9 @@ async def add_player(interaction, member, game, team, conn):
         # Global handler might catch this if it propagates, but since we catch it here:
         try:
             if not interaction.response.is_done():
-                await interaction.response.send_message("Failed to add player. Please try again.", ephemeral=True)
+                await interaction.response.send_message("Échec de l'ajout du joueur. Veuillez réessayer.", ephemeral=True)
             else:
-                await interaction.followup.send("Failed to add player. Please try again.", ephemeral=True)
+                await interaction.followup.send("Échec de l'ajout du joueur. Veuillez réessayer.", ephemeral=True)
         except Exception:
             pass
 
@@ -54,9 +54,9 @@ async def remove_player(interaction, member, conn):
         cursor.execute(query, (member.id,))
         if cursor.rowcount == 0:
             if not interaction.response.is_done():
-                await interaction.response.send_message(f"{member.name} was not found in the database.", ephemeral=True)
+                await interaction.response.send_message(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
             else:
-                await interaction.followup.send(f"{member.name} was not found in the database.", ephemeral=True)
+                await interaction.followup.send(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
             return
 
         # Also remove from availability table
@@ -67,16 +67,16 @@ async def remove_player(interaction, member, conn):
         print(f"Success: {member.name} removed from DB.")
         
         if not interaction.response.is_done():
-            await interaction.response.send_message(f"{member.name} has been successfully removed.", ephemeral=True)
+            await interaction.response.send_message(f"{member.name} a été supprimé avec succès.", ephemeral=True)
         else:
-            await interaction.followup.send(f"{member.name} has been successfully removed.", ephemeral=True)
+            await interaction.followup.send(f"{member.name} a été supprimé avec succès.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_player: {e}")
         try:
             if not interaction.response.is_done():
-                await interaction.response.send_message("Failed to remove player. Please try again.", ephemeral=True)
+                await interaction.response.send_message("Échec de la suppression du joueur. Veuillez réessayer.", ephemeral=True)
             else:
-                await interaction.followup.send("Failed to remove player. Please try again.", ephemeral=True)
+                await interaction.followup.send("Échec de la suppression du joueur. Veuillez réessayer.", ephemeral=True)
         except Exception:
             pass
 
@@ -95,10 +95,9 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
     try:
         cursor = conn.cursor()
         
-        # Check if availability already exists for this user and day to avoid duplicates? 
-        # For now, let's just insert. The table doesn't have a unique constraint on (discord_id, day) yet.
-        # Ideally we should probably delete previous availability for that day or allow multiple slots.
-        # Let's assume one slot per day for simplicity as a start, deleting old one for that day.
+        # Check for existing availability. 
+        # Currently, we enforce one slot per day per user by deleting any previous entry for that day.
+        # Future improvement: Allow multiple slots or update existing ones.
         
         cursor.execute("DELETE FROM availability WHERE discord_id = ? AND day = ?", (member.id, day))
         
@@ -111,16 +110,16 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
         print(f"Success: Availability added for {member.name} on day {day}.")
         
         if not interaction.response.is_done():
-            await interaction.response.send_message(f"Availability added for {member.name}!", ephemeral=True)
+            await interaction.response.send_message(f"Disponibilité ajoutée pour {member.name} !", ephemeral=True)
         else:
-            await interaction.followup.send(f"Availability added for {member.name}!", ephemeral=True)
+            await interaction.followup.send(f"Disponibilité ajoutée pour {member.name} !", ephemeral=True)
             
     except Exception as e:
         print(f"Error in add_availability: {e}")
         try:
             if not interaction.response.is_done():
-                await interaction.response.send_message("Failed to add availability. Please try again.", ephemeral=True)
+                await interaction.response.send_message("Échec de l'ajout de la disponibilité. Veuillez réessayer.", ephemeral=True)
             else:
-                await interaction.followup.send("Failed to add availability. Please try again.", ephemeral=True)
+                await interaction.followup.send("Échec de l'ajout de la disponibilité. Veuillez réessayer.", ephemeral=True)
         except Exception:
             pass
