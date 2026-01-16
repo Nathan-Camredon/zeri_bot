@@ -25,7 +25,7 @@ async def add_player(interaction, member, game, team, conn):
             INSERT OR IGNORE INTO players (discord_id, username, game, team)
             VALUES (?, ?, ?, ?)
         """
-        cursor.execute(query, (member.id, member.name, game, team.lower()))
+        cursor.execute(query, (member.id, member.name, game, team.strip().lower()))
         conn.commit()
         print(f"Success: {member.name} added to DB.")
     except Exception as e:

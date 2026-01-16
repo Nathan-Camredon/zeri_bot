@@ -24,11 +24,13 @@ async def display_team(interaction, conn):
         # Organize data into a nested dictionary: schedule[game][team] = [list of usernames]
         for row in data: 
             username, game, team = row
+            team_display = team.title()
+            
             if game not in schedule:
                 schedule[game] = {}
-            if team not in schedule[game]:
-                schedule[game][team] = []
-            schedule[game][team].append(username)
+            if team_display not in schedule[game]:
+                schedule[game][team_display] = []
+            schedule[game][team_display].append(username)
             
         embed = discord.Embed(title="Nos Équipes", color=discord.Color.blue())
         for game in schedule:

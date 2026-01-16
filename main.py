@@ -14,7 +14,7 @@ from modules.player_management import add_player, remove_player, add_availabilit
 from modules.affichages import display_team
 from modules.tasks import start_tasks
 from modules.planning import calculate_common_availability, get_player_availability
-from modules.session_management import schedule_session, list_sessions
+from modules.session_management import schedule_session, list_sessions, delete_session
 
 #------------------------------------------------------
 #           VARIABLES
@@ -75,9 +75,9 @@ async def on_app_command_error(interaction: discord.Interaction, error: app_comm
     Global error handler for all app commands (slash commands).
     """
     if interaction.response.is_done():
-        await interaction.followup.send(f"An error occurred: {error}", ephemeral=True)
+        await interaction.followup.send(f"Une erreur est survenue : {error}", ephemeral=True)
     else:
-        await interaction.response.send_message(f"An error occurred: {error}", ephemeral=True)
+        await interaction.response.send_message(f"Une erreur est survenue : {error}", ephemeral=True)
     print(f"App command error: {error}")
 
 #------------------------------------------------------
@@ -145,15 +145,16 @@ bot.tree.add_command(availability_group)
 session_group = app_commands.Group(name="session", description="Gérer les sessions de jeu")
 
 @session_group.command(name="add", description="Planifier une session de jeu")
-async def session_add(interaction: discord.Interaction, team: str, date: str, time: str):
+async def session_add(interaction: discord.Interaction, team: str, day: str, start: int, end: int):
     """
     Slash command to schedule a session.
     Args:
         team: Team name
-        date: DD/MM/YYYY
-        time: HH:MM
+        day: Day (Lundi, Mardi...)
+        start: Start hour (0-23)
+        end: End hour (0-23)
     """
-    await schedule_session(interaction, team, date, time, conn)
+    await schedule_session(interaction, team, day, start, end, conn)
 
 @session_group.command(name="list", description="Voir les prochaines sessions d'une équipe")
 async def session_list(interaction: discord.Interaction, team: str):
@@ -161,6 +162,15 @@ async def session_list(interaction: discord.Interaction, team: str):
     Slash command to list upcoming sessions.
     """
     await list_sessions(interaction, team, conn)
+
+@session_group.command(name="delete", description="Supprimer une session par son ID")
+async def session_delete(interaction: discord.Interaction, id: int):
+    """
+    Slash command to delete a session.
+    Args:
+        id: Session ID
+    """
+    await delete_session(interaction, id, conn)
 
 bot.tree.add_command(session_group)
 

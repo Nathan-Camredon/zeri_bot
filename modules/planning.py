@@ -16,7 +16,7 @@ def calculate_common_availability(team_name, conn):
     cursor = conn.cursor()
     
     # 1. Get all members of the team (case-insensitive search)
-    cursor.execute("SELECT discord_id, username FROM players WHERE LOWER(team) = ?", (team_name.lower(),))
+    cursor.execute("SELECT discord_id, username FROM players WHERE LOWER(team) = ?", (team_name.strip().lower(),))
     members = cursor.fetchall()
     
     if not members:
