@@ -25,7 +25,7 @@ async def add_player(interaction, member, game, team, conn):
             INSERT OR IGNORE INTO players (discord_id, username, game, team)
             VALUES (?, ?, ?, ?)
         """
-        cursor.execute(query, (member.id, member.name, game, team))
+        cursor.execute(query, (member.id, member.name, game, team.lower()))
         conn.commit()
         print(f"Success: {member.name} added to DB.")
     except Exception as e:
@@ -52,24 +52,36 @@ async def remove_player(interaction, member, conn):
         cursor = conn.cursor()
         query = "DELETE FROM players WHERE discord_id = ?"
         cursor.execute(query, (member.id,))
-        if cursor.rowcount == 0:
+        player_deleted = cursor.rowcount > 0
+
+        # Also remove from availability table (do this regardless of player table result to ensure cleanup)
+        query_availability = "DELETE FROM availability WHERE discord_id = ?"
+        cursor.execute(query_availability, (member.id,))
+        availability_deleted = cursor.rowcount > 0
+
+        conn.commit()
+        
+        if player_deleted:
+            print(f"Success: {member.name} removed from DB.")
+            if not interaction.response.is_done():
+                await interaction.response.send_message(f"{member.name} a été supprimé avec succès.", ephemeral=True)
+            else:
+                await interaction.followup.send(f"{member.name} a été supprimé avec succès.", ephemeral=True)
+        elif availability_deleted:
+             # Case where player wasn't in 'players' but had leftover availability
+             print(f"Success: {member.name} availability cleaned up.")
+             if not interaction.response.is_done():
+                await interaction.response.send_message(f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées.", ephemeral=True)
+             else:
+                await interaction.followup.send(f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées.", ephemeral=True)
+        else:
             if not interaction.response.is_done():
                 await interaction.response.send_message(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
             else:
                 await interaction.followup.send(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
-            return
+        return
 
-        # Also remove from availability table
-        query_availability = "DELETE FROM availability WHERE discord_id = ?"
-        cursor.execute(query_availability, (member.id,))
 
-        conn.commit()
-        print(f"Success: {member.name} removed from DB.")
-        
-        if not interaction.response.is_done():
-            await interaction.response.send_message(f"{member.name} a été supprimé avec succès.", ephemeral=True)
-        else:
-            await interaction.followup.send(f"{member.name} a été supprimé avec succès.", ephemeral=True)
     except Exception as e:
         print(f"Error in remove_player: {e}")
         try:
@@ -94,6 +106,15 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
     """
     try:
         cursor = conn.cursor()
+
+        # Check if player exists
+        cursor.execute("SELECT 1 FROM players WHERE discord_id = ?", (member.id,))
+        if cursor.fetchone() is None:
+            if not interaction.response.is_done():
+                 await interaction.response.send_message(f"Erreur : Vous n'êtes pas enregistré.", ephemeral=True)
+            else:
+                 await interaction.followup.send(f"Erreur : Vous n'êtes pas enregistré.", ephemeral=True)
+            return
         
         # Check for existing availability. 
         # Currently, we enforce one slot per day per user by deleting any previous entry for that day.
