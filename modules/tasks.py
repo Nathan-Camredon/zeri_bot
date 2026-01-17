@@ -3,20 +3,17 @@ from discord.ext import tasks
 import datetime
 import os
 from modules.database import conn
+from modules.planning import calculate_common_availability
 
 def start_tasks(bot):
     """
     Starts all background tasks.
+
+    Args:
+        bot: The Discord bot instance.
     """
-    # We attach the bot instance to the task function so it can access 'bot'
-    # Alternatively, we can just pass 'bot' if we refactor 'daily_cleanup' to be a class method,
-    # but for a standalone function in a module, we need to inject 'bot' somehow if we want to use 'bot.get_channel'.
-    # A common pattern without classes is to use a global or pass it. 
-    # Since tasks.loop is a decorator, 'self' isn't there. 
-    # We'll set a module-level variable or use a hidden attribute.
+    # Attach bot instance to task functions to allow access within the loop
     daily_cleanup.bot = bot
-    
-    # Pass bot to other tasks
     weekly_schedule.bot = bot
     availability_reminder.bot = bot
 
@@ -40,13 +37,13 @@ async def daily_cleanup():
     """
     # Calculate yesterday's index
     today = datetime.datetime.now()
-    yesterday = (today.weekday() - 1) % 7
+    yesterday_index = (today.weekday() - 1) % 7
     days = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
-    previous_day_name = days[yesterday]
+    previous_day_name = days[yesterday_index]
     
     try:
         cursor = conn.cursor()
-        cursor.execute("DELETE FROM availability WHERE day = ?", (yesterday,))
+        cursor.execute("DELETE FROM availability WHERE day = ?", (yesterday_index,))
         conn.commit()
         print(f"Database cleaned for {previous_day_name}.")
         
@@ -71,15 +68,13 @@ async def daily_cleanup():
     except Exception as e:
         print(f"Error in daily_cleanup: {e}")
 
-from modules.planning import calculate_common_availability
-
 @tasks.loop(time=datetime.time(hour=12, minute=0))
 async def weekly_schedule():
     """
     Posts the weekly schedule every Monday at 12:00.
     """
     today = datetime.datetime.now()
-    # Check if it's Monday (0). tasks.loop(time=...) runs every day at that time, so we check the day.
+    # Check if it's Monday (0).
     if today.weekday() != 0:
         return
 
@@ -156,12 +151,7 @@ async def availability_reminder():
     all_players = cursor.fetchall()
     
     for pid, username in all_players:
-        # Check if they have availability for next week (which is technically "this" week in DB terms since we clean daily? 
-        # Wait, if we clean daily, the DB contains future days. 
-        # If today is Sunday, we want them to fill for Mon-Sun starting tomorrow.
-        # But if we clean daily, 'Lundi' in DB refers to the *coming* Monday if filled recently?
-        # Yes, usually people fill for the upcoming week.
-        
+        # Check if they have availability for next week
         cursor.execute("SELECT 1 FROM availability WHERE discord_id = ?", (pid,))
         if cursor.fetchone() is None:
             # User has no availability set

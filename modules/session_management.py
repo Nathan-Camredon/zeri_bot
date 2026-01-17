@@ -1,14 +1,20 @@
 import sqlite3
 import datetime
 import discord
+import re
 from modules.planning import calculate_common_availability
 
 async def schedule_session(interaction, team, day_input, start_hour, end_hour, conn):
     """
-    Schedules a session for a team using day name and integer hours.
-    day_input: "Lundi", "Mardi", etc.
-    start_hour: int (0-23)
-    end_hour: int (0-23)
+    Schedules a session for a team.
+    
+    Args:
+        interaction: Discord interaction.
+        team (str): Team name.
+        day_input (str): Day name (e.g., "Lundi").
+        start_hour (int): Start hour (0-23).
+        end_hour (int): End hour (0-23).
+        conn: Database connection.
     """
     cursor = conn.cursor()
     team = team.strip().lower()
@@ -32,9 +38,7 @@ async def schedule_session(interaction, team, day_input, start_hour, end_hour, c
     if days_ahead < 0: # Target day already passed this week
         days_ahead += 7
     elif days_ahead == 0: # Same day
-        # If the requested time is already passed today, assume next week? 
-        # Or let them schedule for later today? 
-        # Let's say if start_hour < current_hour, it's next week.
+        # If the requested time is already passed today, assume next week.
         if start_hour <= today.hour:
              days_ahead += 7
              
@@ -55,17 +59,10 @@ async def schedule_session(interaction, team, day_input, start_hour, end_hour, c
     is_compatible = False
     if common_slots and target_day_index in common_slots:
         for slot_start, slot_end in common_slots[target_day_index]:
-            # Check overlap: max(start1, start2) < min(end1, end2)
-            # Session: start_hour to end_hour
-            # Slot: slot_start to slot_end
-            if max(start_hour, slot_start) < min(end_hour, slot_end):
-                 # Intersection found. Check if it covers the WHOLE session?
-                 # User might want to play 20-23 even if common is 20-22.
-                 # Let's say if there is ANY overlap, it's "okay" but warn if partial?
-                 # Logic requested: "compatible" usually means fully within.
-                 if start_hour >= slot_start and end_hour <= slot_end:
-                     is_compatible = True
-                     break
+            # Simple check: if session time is fully within a common slot
+            if start_hour >= slot_start and end_hour <= slot_end:
+                is_compatible = True
+                break
     
     if not is_compatible:
         warning_message = f"\n⚠️ **Attention** : Créneau ({day_input.title()} {start_hour}h-{end_hour}h) hors des disponibilités communes déclarées."
@@ -92,6 +89,11 @@ async def schedule_session(interaction, team, day_input, start_hour, end_hour, c
 async def list_sessions(interaction, team, conn):
     """
     Lists upcoming sessions for a team.
+    
+    Args:
+        interaction: Discord interaction.
+        team (str): Team name.
+        conn: Database connection.
     """
     cursor = conn.cursor()
     team = team.strip().lower()
@@ -113,20 +115,14 @@ async def list_sessions(interaction, team, conn):
     
     for r in rows:
         try:
-            # r[1] is Date (DD/MM/YYYY)
-            # r[2] is Time (e.g., "20h - 22h")
-            # We need to construct a datetime object for sorting and filtering.
-            # Parse Date
+            # r[1] is Date (DD/MM/YYYY), r[2] is Time string
             dt_date = datetime.datetime.strptime(r[1], "%d/%m/%Y")
             
-            # Parse Start Hour from Time string
-            # Expected format: "20h - 22h" or anything starting with integer
-            # Let's try to extract the first integer
-            import re
+            # Extract start hour
             match = re.search(r"(\d+)", r[2])
             start_hour = int(match.group(1)) if match else 0
             
-            # Combine
+            # Combine to full datetime
             dt = dt_date.replace(hour=start_hour, minute=0)
             
             parsed_rows.append((dt, r))
@@ -139,12 +135,8 @@ async def list_sessions(interaction, team, conn):
     now = datetime.datetime.now()
     
     for dt, row in parsed_rows:
-        # Filter past sessions? (Allow sessions from earlier today to show?)
-        # Let's hide only if date < today or (date==today and time passed)
+        # Hide past sessions
         if dt < now:
-            # Keep if it's plainly today but hour passed? Maybe just keep until midnight.
-            # If session was 20h and now is 21h, it's technically "current/past".
-            # Let's strict hide past sessions to be consistent with cleanup
             continue
             
         sessions_txt += f"• **{row[1]}** : {row[2]} (ID: {row[0]})\n"
@@ -158,6 +150,11 @@ async def list_sessions(interaction, team, conn):
 async def delete_session(interaction, session_id, conn):
     """
     Deletes a session by ID.
+    
+    Args:
+        interaction: Discord interaction.
+        session_id (int): ID of the session to delete.
+        conn: Database connection.
     """
     cursor = conn.cursor()
     

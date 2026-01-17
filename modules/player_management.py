@@ -1,5 +1,5 @@
 #------------------------------------------------------
-#           Import
+#           Imports
 #------------------------------------------------------
 import sqlite3
 import discord
@@ -30,12 +30,13 @@ async def add_player(interaction, member, game, team, conn):
         print(f"Success: {member.name} added to DB.")
     except Exception as e:
         print(f"Error in add_player: {e}")
-        # Global handler might catch this if it propagates, but since we catch it here:
+        # Attempt to notify user of failure
         try:
+            msg = "Échec de l'ajout du joueur. Veuillez réessayer."
             if not interaction.response.is_done():
-                await interaction.response.send_message("Échec de l'ajout du joueur. Veuillez réessayer.", ephemeral=True)
+                await interaction.response.send_message(msg, ephemeral=True)
             else:
-                await interaction.followup.send("Échec de l'ajout du joueur. Veuillez réessayer.", ephemeral=True)
+                await interaction.followup.send(msg, ephemeral=True)
         except Exception:
             pass
 
@@ -54,41 +55,38 @@ async def remove_player(interaction, member, conn):
         cursor.execute(query, (member.id,))
         player_deleted = cursor.rowcount > 0
 
-        # Also remove from availability table (do this regardless of player table result to ensure cleanup)
+        # Also remove from availability table to ensure cleanup
         query_availability = "DELETE FROM availability WHERE discord_id = ?"
         cursor.execute(query_availability, (member.id,))
         availability_deleted = cursor.rowcount > 0
 
         conn.commit()
         
+        msg = ""
         if player_deleted:
             print(f"Success: {member.name} removed from DB.")
-            if not interaction.response.is_done():
-                await interaction.response.send_message(f"{member.name} a été supprimé avec succès.", ephemeral=True)
-            else:
-                await interaction.followup.send(f"{member.name} a été supprimé avec succès.", ephemeral=True)
+            msg = f"{member.name} a été supprimé avec succès."
         elif availability_deleted:
              # Case where player wasn't in 'players' but had leftover availability
              print(f"Success: {member.name} availability cleaned up.")
-             if not interaction.response.is_done():
-                await interaction.response.send_message(f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées.", ephemeral=True)
-             else:
-                await interaction.followup.send(f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées.", ephemeral=True)
+             msg = f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées."
         else:
-            if not interaction.response.is_done():
-                await interaction.response.send_message(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
-            else:
-                await interaction.followup.send(f"{member.name} n'a pas été trouvé dans la base de données.", ephemeral=True)
+            msg = f"{member.name} n'a pas été trouvé dans la base de données."
+            
+        if not interaction.response.is_done():
+            await interaction.response.send_message(msg, ephemeral=True)
+        else:
+            await interaction.followup.send(msg, ephemeral=True)
         return
-
 
     except Exception as e:
         print(f"Error in remove_player: {e}")
         try:
+            msg = "Échec de la suppression du joueur. Veuillez réessayer."
             if not interaction.response.is_done():
-                await interaction.response.send_message("Échec de la suppression du joueur. Veuillez réessayer.", ephemeral=True)
+                await interaction.response.send_message(msg, ephemeral=True)
             else:
-                await interaction.followup.send("Échec de la suppression du joueur. Veuillez réessayer.", ephemeral=True)
+                await interaction.followup.send(msg, ephemeral=True)
         except Exception:
             pass
 
@@ -110,16 +108,15 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
         # Check if player exists
         cursor.execute("SELECT 1 FROM players WHERE discord_id = ?", (member.id,))
         if cursor.fetchone() is None:
+            msg = "Erreur : Vous n'êtes pas enregistré."
             if not interaction.response.is_done():
-                 await interaction.response.send_message(f"Erreur : Vous n'êtes pas enregistré.", ephemeral=True)
+                 await interaction.response.send_message(msg, ephemeral=True)
             else:
-                 await interaction.followup.send(f"Erreur : Vous n'êtes pas enregistré.", ephemeral=True)
+                 await interaction.followup.send(msg, ephemeral=True)
             return
         
         # Check for existing availability. 
         # Currently, we enforce one slot per day per user by deleting any previous entry for that day.
-        # Future improvement: Allow multiple slots or update existing ones.
-        
         cursor.execute("DELETE FROM availability WHERE discord_id = ? AND day = ?", (member.id, day))
         
         query = """
@@ -130,17 +127,19 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
         conn.commit()
         print(f"Success: Availability added for {member.name} on day {day}.")
         
+        msg = f"Disponibilité ajoutée pour {member.name} !"
         if not interaction.response.is_done():
-            await interaction.response.send_message(f"Disponibilité ajoutée pour {member.name} !", ephemeral=True)
+            await interaction.response.send_message(msg, ephemeral=True)
         else:
-            await interaction.followup.send(f"Disponibilité ajoutée pour {member.name} !", ephemeral=True)
+            await interaction.followup.send(msg, ephemeral=True)
             
     except Exception as e:
         print(f"Error in add_availability: {e}")
         try:
+            msg = "Échec de l'ajout de la disponibilité. Veuillez réessayer."
             if not interaction.response.is_done():
-                await interaction.response.send_message("Échec de l'ajout de la disponibilité. Veuillez réessayer.", ephemeral=True)
+                await interaction.response.send_message(msg, ephemeral=True)
             else:
-                await interaction.followup.send("Échec de l'ajout de la disponibilité. Veuillez réessayer.", ephemeral=True)
+                await interaction.followup.send(msg, ephemeral=True)
         except Exception:
             pass
