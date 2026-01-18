@@ -1,22 +1,22 @@
 import sqlite3
 
-def calculate_common_availability(team_name, conn):
+def calculate_common_availability(team_name, guild_id, conn):
     """
-    Calculates the common availability slots for a given team.
+    Calculates the common availability slots for a given team in a specific guild.
     
     Args:
-        team_name (str): The name of the team.
-        conn (sqlite3.Connection): The database connection.
+        team_name: The name of the team.
+        guild_id: The ID of the guild (server).
+        conn: The database connection.
         
     Returns:
         dict: A dictionary where keys are days (0-6) and values are lists of compatible (start, end) tuples.
-              Returns None if the team doesn't exist or is empty.
-              Returns an empty dict entry for a day if no common slots found.
+        Returns None if the team doesn't exist or is empty.
     """
     cursor = conn.cursor()
     
-    # 1. Get all members of the team (case-insensitive search)
-    cursor.execute("SELECT discord_id, username FROM players WHERE LOWER(team) = ?", (team_name.strip().lower(),))
+    # 1. Get all members of the team (case-insensitive search) IN THIS GUILD
+    cursor.execute("SELECT discord_id, username FROM players WHERE LOWER(team) = ? AND guild_id = ?", (team_name.strip().lower(), guild_id))
     members = cursor.fetchall()
     
     if not members:
@@ -26,6 +26,7 @@ def calculate_common_availability(team_name, conn):
     total_members = len(member_ids)
     
     # 2. Fetch ALL availability for these members in one query
+    # Note: Availability is GLOBAL, so we query by discord_id regardless of guild
     placeholders = ','.join('?' for _ in member_ids)
     query = f"""
         SELECT discord_id, day, start_time, end_time 

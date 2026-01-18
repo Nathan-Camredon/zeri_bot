@@ -8,9 +8,11 @@ import discord
 #           Functions
 #------------------------------------------------------
 
+from modules.utils import check_permission_and_respond
+
 async def add_player(interaction, member, game, team, conn):
     """
-    Adds a player to the database.
+    Adds a player to the database for the specific guild.
     
     Args:
         interaction: The Discord interaction object.
@@ -19,18 +21,25 @@ async def add_player(interaction, member, game, team, conn):
         team: The team the player belongs to.
         conn: The database connection.
     """
+    if not await check_permission_and_respond(interaction):
+        return
+
+    if not interaction.guild_id:
+         await interaction.response.send_message("Cette commande doit être utilisée sur un serveur.", ephemeral=True)
+         return
+
     try:
         cursor = conn.cursor()
         query = """
-            INSERT OR IGNORE INTO players (discord_id, username, game, team)
-            VALUES (?, ?, ?, ?)
+            INSERT OR IGNORE INTO players (discord_id, guild_id, username, game, team)
+            VALUES (?, ?, ?, ?, ?)
         """
-        cursor.execute(query, (member.id, member.name, game, team.strip().lower()))
+        # Lowercase team name for consistency within guild
+        cursor.execute(query, (member.id, interaction.guild_id, member.name, game, team.strip().lower()))
         conn.commit()
-        print(f"Success: {member.name} added to DB.")
+        print(f"Success: {member.name} added to DB (Guild {interaction.guild_id}).")
     except Exception as e:
         print(f"Error in add_player: {e}")
-        # Attempt to notify user of failure
         try:
             msg = "Échec de l'ajout du joueur. Veuillez réessayer."
             if not interaction.response.is_done():
@@ -42,36 +51,39 @@ async def add_player(interaction, member, game, team, conn):
 
 async def remove_player(interaction, member, conn):
     """
-    Removes a player from the database.
+    Removes a player from the database for the specific guild.
     
     Args:
         interaction: The Discord interaction object.
         member: The Discord member to remove.
         conn: The database connection.
     """
+    if not await check_permission_and_respond(interaction):
+        return
+
+    if not interaction.guild_id:
+         await interaction.response.send_message("Cette commande doit être utilisée sur un serveur.", ephemeral=True)
+         return
+
     try:
         cursor = conn.cursor()
-        query = "DELETE FROM players WHERE discord_id = ?"
-        cursor.execute(query, (member.id,))
+        # Only remove from THIS guild
+        query = "DELETE FROM players WHERE discord_id = ? AND guild_id = ?"
+        cursor.execute(query, (member.id, interaction.guild_id))
         player_deleted = cursor.rowcount > 0
 
-        # Also remove from availability table to ensure cleanup
-        query_availability = "DELETE FROM availability WHERE discord_id = ?"
-        cursor.execute(query_availability, (member.id,))
-        availability_deleted = cursor.rowcount > 0
-
+        # Note: We DO NOT remove availability because it is GLOBAL.
+        # Unless the user is not in ANY guild anymore? 
+        # For simplicity (V2.0 plan), we keep availability global and persistent.
+        
         conn.commit()
         
         msg = ""
         if player_deleted:
-            print(f"Success: {member.name} removed from DB.")
-            msg = f"{member.name} a été supprimé avec succès."
-        elif availability_deleted:
-             # Case where player wasn't in 'players' but had leftover availability
-             print(f"Success: {member.name} availability cleaned up.")
-             msg = f"{member.name} n'était pas dans la liste des joueurs, mais ses disponibilités ont été nettoyées."
+            print(f"Success: {member.name} removed from DB (Guild {interaction.guild_id}).")
+            msg = f"{member.name} a été supprimé de l'équipe avec succès."
         else:
-            msg = f"{member.name} n'a pas été trouvé dans la base de données."
+            msg = f"{member.name} n'a pas été trouvé dans l'équipe de ce serveur."
             
         if not interaction.response.is_done():
             await interaction.response.send_message(msg, ephemeral=True)
@@ -92,7 +104,7 @@ async def remove_player(interaction, member, conn):
 
 async def add_availability(interaction, member, day, start_time, end_time, conn):
     """
-    Adds player availability to the database.
+    Adds player availability to the database (Global).
     
     Args:
         interaction: The Discord interaction object.
@@ -105,18 +117,30 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
     try:
         cursor = conn.cursor()
 
-        # Check if player exists
-        cursor.execute("SELECT 1 FROM players WHERE discord_id = ?", (member.id,))
-        if cursor.fetchone() is None:
-            msg = "Erreur : Vous n'êtes pas enregistré."
-            if not interaction.response.is_done():
-                 await interaction.response.send_message(msg, ephemeral=True)
-            else:
-                 await interaction.followup.send(msg, ephemeral=True)
-            return
+        # Check if player exists in AT LEAST ONE guild (optional validation?)
+        # Or just let them add availability even if not in a team yet?
+        # Let's check if they are in THIS guild to be polite, or just allow it.
+        # To strictly follow "User must be registered", we check if they are in 'players' table for ANY guild?
+        # Or current guild? Logic: "You must be registered (in a team) to add availability".
+        
+        # New Validation: Check if user is in 'players' table (ignoring guild for now, or check current guild?)
+        # If we check current guild, then a user must be added to team first. That makes sense.
+        if interaction.guild_id:
+             cursor.execute("SELECT 1 FROM players WHERE discord_id = ? AND guild_id = ?", (member.id, interaction.guild_id))
+             if cursor.fetchone() is None:
+                # Fallback: Check if they are in ANY guild? 
+                # If they are not in this guild, they shouldn't be managing stuff here maybe?
+                # But availability is global... 
+                # Decision: Allow adding availability if they are registered in AT LEAST one place?
+                # Simpler: Require registration in CURRENT guild to interact.
+                msg = "Erreur : Vous n'êtes pas enregistré dans une équipe sur ce serveur."
+                if not interaction.response.is_done():
+                     await interaction.response.send_message(msg, ephemeral=True)
+                else:
+                     await interaction.followup.send(msg, ephemeral=True)
+                return
         
         # Check for existing availability. 
-        # Currently, we enforce one slot per day per user by deleting any previous entry for that day.
         cursor.execute("DELETE FROM availability WHERE discord_id = ? AND day = ?", (member.id, day))
         
         query = """
@@ -127,7 +151,7 @@ async def add_availability(interaction, member, day, start_time, end_time, conn)
         conn.commit()
         print(f"Success: Availability added for {member.name} on day {day}.")
         
-        msg = f"Disponibilité ajoutée pour {member.name} !"
+        msg = f"Disponibilité ajoutée pour {member.name} (Global) !"
         if not interaction.response.is_done():
             await interaction.response.send_message(msg, ephemeral=True)
         else:
