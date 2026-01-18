@@ -8,32 +8,36 @@
 ## 🇬🇧 Features / 🇫🇷 Fonctionnalités
 
 🇬🇧
+- **Multi-Server Support**: Teams and sessions are isolated per Discord server (Guild).
 - **Player Management**: Register players to teams and games.
-- **Availability Tracking**: Players declare their weekly availability.
+- **Availability Tracking**: Players declare their weekly availability (Global across servers).
 - **Automated Scheduling**: 
     - Finds common availability slots for teams.
-    - Weekly schedule recap (Monday 12:00).
-    - Availability reminders (Sunday 18:00).
+    - Weekly schedule recap.
 - **Session Planning**: Schedule specific game sessions with conflict detection.
-- **Database Storage**: SQLite persistence.
+- **Permission System**: Secure sensitive commands to Admins or a configured Manager role.
+- **Onboarding**: Auto-welcome message and setup guide.
+- **Feedback**: Built-in `/report` system.
 
 🇫🇷
-- **Gestion des Joueurs** : Inscription des joueurs dans des équipes et sur des jeux.
-- **Suivi des Disponibilités** : Les joueurs déclarent leurs créneaux hebdomadaires.
+- **Multi-Serveur** : Les équipes et sessions sont isolées par serveur Discord.
+- **Gestion des Joueurs** : Inscription des joueurs dans des équipes.
+- **Suivi des Disponibilités** : Les joueurs déclarent leurs créneaux (Global).
 - **Planification Automatique** :
     - Trouve les créneaux communs pour chaque équipe.
-    - Récapitulatif hebdomadaire (Lundi 12h00).
-    - Rappels de disponibilité (Dimanche 18h00).
-- **Organisation de Sessions** : Planification de séances précises avec détection de conflits.
-- **Base de Données** : Persistance via SQLite.
+    - Récapitulatif hebdomadaire.
+- **Organisation de Sessions** : Planification de séances avec détection de conflits.
+- **Système de Permissions** : Sécurisation des commandes (Admin ou Rôle Manager).
+- **Acceuil** : Message de bienvenue automatique et guide de configuration.
+- **Feedback** : Système de `/report` intégré.
 
 ---
 
 ## 🇬🇧 Prerequisites / 🇫🇷 Prérequis
 
 - [Python 3.8+](https://www.python.org/)
-- 🇬🇧 A Discord Bot Token (from [Discord Developer Portal](https://discord.com/developers/applications))
-- 🇫🇷 Un Token de Bot Discord (via le [Portail Développeur Discord](https://discord.com/developers/applications))
+- 🇬🇧 A Discord Bot Token
+- 🇫🇷 Un Token de Bot Discord
 
 ---
 
@@ -55,8 +59,8 @@
     🇫🇷 Créez un fichier `.env` à la racine :
     ```env
     DISCORD_TOKEN=your_discord_bot_token
-    GUILD_ID=your_discord_server_id
-    CHANNEL_ID=your_channel_id_for_recaps
+    # Optional for Dev / Optionnel pour le Dev
+    GUILD_ID=your_dev_server_id
     ```
 
 ---
@@ -70,60 +74,49 @@
 
 2.  **Discord Slash Commands / Commandes Discord** :
 
-    ### 🇬🇧 Player Management / 🇫🇷 Gestion des Joueurs
-    - `/add [member] [game] [team]`: 
+    ### 🇬🇧 General / 🇫🇷 Général
+    - `/aide`: 🇬🇧 Show commands / 🇫🇷 Voir les commandes.
+    - `/info`: 🇬🇧 Bot info & stats / 🇫🇷 Infos & statistiques.
+    - `/report [message]`: 🇬🇧 Send feedback / 🇫🇷 Envoyer un signalement.
+
+    ### 🇬🇧 Management (Admin/Manager) / 🇫🇷 Gestion
+    - `/config_canal [type]`: 
+        - 🇬🇧 Configure notification channels.
+        - 🇫🇷 Configurer les canaux d'annonces.
+    - `/config_role [role]`:
+        - 🇬🇧 Set a Manager role.
+        - 🇫🇷 Définir un rôle Manager.
+    - `/ajouter [member] [game] [team]`: 
         - 🇬🇧 Register a player.
         - 🇫🇷 Inscrire un joueur.
-    - `/remove [member]`: 
-        - 🇬🇧 Remove a player and their data.
-        - 🇫🇷 Supprimer un joueur et ses données.
-    - `/list`: 
-        - 🇬🇧 List all registered teams and players.
-        - 🇫🇷 Lister toutes les équipes et joueurs inscrits.
+    - `/retirer [member]`: 
+        - 🇬🇧 Remove a player.
+        - 🇫🇷 Supprimer un joueur.
 
     ### 🇬🇧 Availability / 🇫🇷 Disponibilités
-    - `/availability add [day] [start] [end]`: 
-        - 🇬🇧 Add a recurring weekly slot (e.g., Lundi 18 20).
-        - 🇫🇷 Ajouter un créneau hebdo récurrent (ex: Lundi 18 20).
-    - `/disponibilite team:[name]`: 
-        - 🇬🇧 Show common slot intersections for a team.
-        - 🇫🇷 Afficher les créneaux communs d'une équipe.
-    - `/disponibilite member:[user]`: 
-        - 🇬🇧 Show availability for a specific player.
-        - 🇫🇷 Afficher les disponibilités d'un joueur spécifique.
+    - `/ajout_dispo [day] [start] [end]`: 
+        - 🇬🇧 Add a recurring slot (e.g., Lundi 18 20).
+        - 🇫🇷 Ajouter un créneau (ex: Lundi 18 20).
+    - `/voir_dispo [team/member]`: 
+        - 🇬🇧 Show availability.
+        - 🇫🇷 Afficher les disponibilités.
 
-    ### 🇬🇧 Sessions (V1.1) / 🇫🇷 Sessions (V1.1)
-    - `/session add [team] [day] [start] [end]`: 
-        - 🇬🇧 Plan a specific session (auto-calculates date). Checks for conflicts.
-        - 🇫🇷 Planifier une session (calcul auto de la date). Vérifie les conflits.
-        - *Ex: `/session add team:Alpha day:Lundi start:21 end:23`*
-    - `/session list [team]`: 
-        - 🇬🇧 View upcoming sessions.
+    ### 🇬🇧 Sessions / 🇫🇷 Sessions
+    - `/planifier_session [team] [day] [start] [end]`: 
+        - 🇬🇧 Plan a session.
+        - 🇫🇷 Planifier une session.
+    - `/liste_sessions [team]`: 
+        - 🇬🇧 List upcoming sessions.
         - 🇫🇷 Voir les sessions à venir.
-    - `/session delete [id]`: 
-        - 🇬🇧 Delete a session by its ID.
-        - 🇫🇷 Supprimer une session via son ID.
-
----
-
-## 🇬🇧 Project Structure / 🇫🇷 Structure du Projet
-
-- `main.py`: 
-    - 🇬🇧 Bot entry point, command registration, and event loop.
-    - 🇫🇷 Point d'entrée, enregistrement des commandes et boucle d'événements.
-- `modules/`:
-    - `database.py`: DB connection/tables (`players`, `availability`, `sessions`).
-    - `player_management.py`: Logic for adding/removing players.
-    - `planning.py`: Logic for schedule intersections.
-    - `session_management.py`: Logic for sessions (add/list/delete).
-    - `tasks.py`: Background tasks (Cleanup, Recap, Reminders).
-    - `affichages.py`: Display formatting.
-- `database.db`: SQLite database file.
+    - `/supprimer_session [id]`: 
+        - 🇬🇧 Delete a session.
+        - 🇫🇷 Supprimer une session.
 
 ---
 
 ## 🇬🇧 Database Schema / 🇫🇷 Schéma BDD
 
-**`players`**: `discord_id`, `username`, `game`, `team`  
-**`availability`**: `discord_id`, `day` (0-6), `start_time` (0-23), `end_time` (0-23)  
-**`sessions`**: `id`, `team`, `date` (DD/MM/YYYY), `time` (Text)
+**`guild_configs`**: `guild_id`, `default_channel_id`, `planning_channel_id`, `reminder_channel_id`, `admin_role_id`
+**`players`**: `discord_id`, `guild_id`, `username`, `game`, `team`  
+**`availability`**: `discord_id`, `day`, `start_time`, `end_time` (Global)
+**`sessions`**: `id`, `guild_id`, `team`, `date`, `time`
