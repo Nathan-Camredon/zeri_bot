@@ -180,7 +180,7 @@ async def remove(interaction: discord.Interaction, member: discord.Member):
 #------------------------------------------------------
 @bot.tree.command(name="ajout_dispo", description="Ajouter un créneau de disponibilité")
 async def availability_add(interaction: discord.Interaction, 
-                           day: Literal['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'], 
+                           date_input: Literal['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'], 
                            start_time: int, 
                            end_time: int):
     """
